@@ -116,6 +116,9 @@
 							<modelPackage>nl.thomas.strava.model</modelPackage>
 							<supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
 							<configOptions>
+								<generateApis>false</generateApis>
+								<generateModelDocumentation>false</generateModelDocumentation>
+								<generateSupportingFiles>false</generateSupportingFiles>
 								<useSpringBoot3>true</useSpringBoot3>
 								<delegatePattern>true</delegatePattern>
 							</configOptions>

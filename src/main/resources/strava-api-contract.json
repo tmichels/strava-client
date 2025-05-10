@@ -1927,7 +1927,13 @@
                 "cover_photo": "https://dgalywyr863hv.cloudfront.net/pictures/clubs/1/4328276/1/large.jpg",
                 "cover_photo_small": "https://dgalywyr863hv.cloudfront.net/pictures/clubs/1/4328276/1/small.jpg",
                 "sport_type": "cycling",
-                "activity_types": ["Ride", "VirtualRide", "EBikeRide", "Velomobile", "Handcycle"],
+                "activity_types": [
+                  "Ride",
+                  "VirtualRide",
+                  "EBikeRide",
+                  "Velomobile",
+                  "Handcycle"
+                ],
                 "city": "San Francisco",
                 "state": "California",
                 "country": "United States",
@@ -2285,84 +2291,6 @@
               "type": "array",
               "items": {
                 "$ref": "https://developers.strava.com/swagger/route.json#/Route"
-              }
-            }
-          },
-          "default": {
-            "description": "Unexpected error.",
-            "schema": {
-              "$ref": "https://developers.strava.com/swagger/fault.json#/Fault"
-            }
-          }
-        }
-      }
-    },
-    "/routes/{id}/export_gpx": {
-      "get": {
-        "operationId": "getRouteAsGPX",
-        "summary": "Export Route GPX",
-        "description": "Returns a GPX file of the route. Requires read_all scope for private routes.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The identifier of the route.",
-            "required": true,
-            "type": "integer",
-            "format": "int64"
-          }
-        ],
-        "tags": [
-          "Routes"
-        ],
-        "responses": {
-          "200": {
-            "description": "A GPX file with the route.",
-            "content": {
-              "application/gpx+xml" : {
-                "schema": {
-                  "type" : "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Unexpected error.",
-            "schema": {
-              "$ref": "https://developers.strava.com/swagger/fault.json#/Fault"
-            }
-          }
-        }
-      }
-    },
-    "/routes/{id}/export_tcx": {
-      "get": {
-        "operationId": "getRouteAsTCX",
-        "summary": "Export Route TCX",
-        "description": "Returns a TCX file of the route. Requires read_all scope for private routes.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The identifier of the route.",
-            "required": true,
-            "type": "integer",
-            "format": "int64"
-          }
-        ],
-        "tags": [
-          "Routes"
-        ],
-        "responses": {
-          "200": {
-            "description": "A TCX file with the route.",
-            "content": {
-              "application/tcx+xml" : {
-                "schema": {
-                  "type" : "string",
-                  "format": "binary"
-                }
               }
             }
           },
