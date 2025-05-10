@@ -1,4 +1,4 @@
-package com.example.demo;
+package nl.thomas.stravaclient;
 
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.core.user.OAuth2User;

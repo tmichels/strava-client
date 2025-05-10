@@ -1,4 +1,4 @@
-package com.example.demo;
+package nl.thomas.stravaclient;
 
 import nl.thomas.strava.model.DetailedAthlete;
 import org.springframework.stereotype.Component;

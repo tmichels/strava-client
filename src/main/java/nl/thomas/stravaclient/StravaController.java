@@ -1,4 +1,4 @@
-package com.example.demo;
+package nl.thomas.stravaclient;
 
 import lombok.extern.slf4j.Slf4j;
 import nl.thomas.strava.model.DetailedAthlete;
