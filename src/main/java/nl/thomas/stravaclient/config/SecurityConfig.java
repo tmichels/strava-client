@@ -1,4 +1,4 @@
-package nl.thomas.stravaclient;
+package nl.thomas.stravaclient.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

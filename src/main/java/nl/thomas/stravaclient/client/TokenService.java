@@ -1,9 +1,8 @@
-package nl.thomas.stravaclient;
+package nl.thomas.stravaclient.client;
 
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 
 @Component
 public class TokenService {

@@ -17,3 +17,5 @@ spring:
             token-uri: https://www.strava.com/oauth/token
             user-info-uri: https://www.strava.com/api/v3/athlete # Required by Strava
             user-name-attribute: id # Required by Strava
+
+strava.baseurl: https://www.strava.com/api/v3/
