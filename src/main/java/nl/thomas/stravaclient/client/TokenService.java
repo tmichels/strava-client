@@ -1,5 +1,6 @@
 package nl.thomas.stravaclient.client;
 
+import lombok.NonNull;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
@@ -13,7 +14,7 @@ public class TokenService {
         this.oAuth2AuthorizedClientService = oAuth2AuthorizedClientService;
     }
 
-    String getToken(OAuth2User oAuth2User) {
+    String getToken(@NonNull OAuth2User oAuth2User) {
         return oAuth2AuthorizedClientService
                 .loadAuthorizedClient("strava", oAuth2User.getName())
                 .getAccessToken()

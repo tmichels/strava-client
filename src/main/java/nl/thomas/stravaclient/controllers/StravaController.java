@@ -1,5 +1,6 @@
 package nl.thomas.stravaclient.controllers;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import nl.thomas.strava.model.DetailedAthlete;
 import nl.thomas.stravaclient.client.StravaClient;
@@ -20,7 +21,7 @@ public class StravaController {
     }
 
     @GetMapping("athlete")
-    public Mono<DetailedAthlete> moetInloggen(@AuthenticationPrincipal OAuth2User oAuth2User) {
+    public Mono<DetailedAthlete> getCurrentAthlete(@AuthenticationPrincipal @NonNull OAuth2User oAuth2User) {
         log.info("GET request received at /athlete for user {}", oAuth2User.getName());
         return stravaClient.getDetailedAthlete(oAuth2User);
     }
