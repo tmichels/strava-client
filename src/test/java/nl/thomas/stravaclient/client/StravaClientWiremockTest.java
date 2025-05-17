@@ -23,7 +23,7 @@ import static org.mockito.Mockito.mock;
 @EnableWireMock
 @SpringBootTest
 @TestPropertySource(properties = {"strava.base-url=http://localhost:${wiremock.server.port}"})
-class StravaClientTest {
+class StravaClientWiremockTest {
 
     @Autowired
     private StravaClient stravaClient;
