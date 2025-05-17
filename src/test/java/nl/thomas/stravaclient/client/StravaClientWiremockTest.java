@@ -6,9 +6,12 @@ import nl.thomas.strava.model.DetailedActivity;
 import nl.thomas.strava.model.DetailedAthlete;
 import nl.thomas.strava.model.SportType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.codec.DecodingException;
 import org.springframework.core.io.Resource;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -36,6 +39,7 @@ import static org.mockito.Mockito.mock;
 @EnableWireMock
 @SpringBootTest
 @TestPropertySource(properties = {"strava.base-url=http://localhost:${wiremock.server.port}"})
+@ExtendWith(OutputCaptureExtension.class)
 class StravaClientWiremockTest {
 
     @Autowired
@@ -128,7 +132,7 @@ class StravaClientWiremockTest {
     }
 
     @Test
-    void getDetail() throws IOException {
+    void getActivities(CapturedOutput output) throws IOException {
         String athleteSampleResponse = activitiesResponsFile.getContentAsString(StandardCharsets.UTF_8);
         WireMock.stubFor(get("/athlete/activities?after=1747476183&before=1747476303&per_page=10").willReturn(
                 aResponse()
@@ -139,6 +143,7 @@ class StravaClientWiremockTest {
         Flux<DetailedActivity> detailedActivities = stravaClient.getDetailedActivities(mock(OAuth2User.class), EARLIER, LATER);
         List<DetailedActivity> actual = detailedActivities.collectList().block();
 
+        assertThat(output).containsPattern("200 OK response from Strava to GET request http://localhost:[0-9]+/athlete/activities\\?after=1747476183&before=1747476303&per_page=10");
         assertThatList(actual).hasSize(1);
         DetailedActivity detailedActivity = actual.get(0);
         assertThat(detailedActivity.getId()).isEqualTo(1155632529L);

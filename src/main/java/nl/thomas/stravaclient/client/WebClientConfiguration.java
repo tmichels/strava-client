@@ -17,15 +17,17 @@ public class WebClientConfiguration {
     WebClient webClient(@Value("${strava.baseurl}") @NonNull String stravaBaseUrl) {
         return WebClient.builder()
                 .baseUrl(stravaBaseUrl)
-                .filter(logRequest())
+                .filter(logRequestAndResponse())
                 .build();
     }
 
-    private ExchangeFilterFunction logRequest() {
-        return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
-                    log.info("{} request to {}", clientRequest.method(), clientRequest.url());
-                    return Mono.just(clientRequest);
-                }
-        );
+    private ExchangeFilterFunction logRequestAndResponse() {
+        return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
+            log.info("{} response from Strava to {} request {}",
+                    clientResponse.statusCode(),
+                    clientResponse.request().getMethod(),
+                    clientResponse.request().getURI());
+            return Mono.just(clientResponse);
+        });
     }
 }
