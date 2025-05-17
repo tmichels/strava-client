@@ -20,4 +20,9 @@ public class TokenService {
                 .getAccessToken()
                 .getTokenValue();
     }
+
+    public String logout(@NonNull OAuth2User oAuth2User) {
+        oAuth2AuthorizedClientService.removeAuthorizedClient("strava", oAuth2User.getName());
+        return "Uitgelogd";
+    }
 }

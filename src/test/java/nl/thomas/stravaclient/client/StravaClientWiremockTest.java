@@ -1,23 +1,36 @@
 package nl.thomas.stravaclient.client;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
+import nl.thomas.strava.model.ActivityType;
+import nl.thomas.strava.model.DetailedActivity;
 import nl.thomas.strava.model.DetailedAthlete;
+import nl.thomas.strava.model.SportType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.codec.DecodingException;
+import org.springframework.core.io.Resource;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.wiremock.spring.EnableWireMock;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static nl.thomas.stravaclient.client.StravaClientTest.EARLIER;
+import static nl.thomas.stravaclient.client.StravaClientTest.LATER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatList;
 import static org.mockito.Mockito.mock;
 
 @EnableWireMock
@@ -30,37 +43,19 @@ class StravaClientWiremockTest {
     @MockitoBean
     private TokenService tokenService;
 
+    @Value("classpath:athlete-sample.json")
+    Resource athleteResponsFile;
+    @Value("classpath:activities-sample.json")
+    Resource activitiesResponsFile;
+
     @Test
-    void validResponse_correctlyMapped() {
+    void validResponse_correctlyMapped() throws IOException {
+        String athleteSampleResponse = athleteResponsFile.getContentAsString(Charset.defaultCharset());
         WireMock.stubFor(get("/athlete").willReturn(
                 aResponse()
                         .withHeader("Content-Type", "application/json")
                         .withStatus(200)
-                        .withBody("""
-                                {
-                                  "id": 5646321,
-                                  "resource_state": 2,
-                                  "firstname": "Sifan",
-                                  "lastname": "Hassan",
-                                  "profile_medium": "https://medium.jpg",
-                                  "profile": "https://large.jpg",
-                                  "city": "Utrecht",
-                                  "state": "",
-                                  "country": "The Netherlands",
-                                  "sex": "F",
-                                  "premium": false,
-                                  "summit": false,
-                                  "created_at": "2011-10-15T12:37:24Z",
-                                  "updated_at": "2021-05-10T07:34:14Z",
-                                  "follower_count": null,
-                                  "friend_count": null,
-                                  "measurement_preference": null,
-                                  "ftp": null,
-                                  "weight": 75,
-                                  "clubs": null,
-                                  "bikes": null,
-                                  "shoes": null
-                                }""")));
+                        .withBody(athleteSampleResponse)));
 
         Mono<DetailedAthlete> mono = stravaClient.getDetailedAthlete(mock(OAuth2User.class));
         DetailedAthlete actual = mono.block();
@@ -75,8 +70,8 @@ class StravaClientWiremockTest {
         assertThat(actual.getState()).isEqualTo("");
         assertThat(actual.getCountry()).isEqualTo("The Netherlands");
         assertThat(actual.getSex()).isEqualTo(DetailedAthlete.SexEnum.F);
-        assertThat(actual.getPremium()).isEqualTo(false);
-        assertThat(actual.getSummit()).isEqualTo(false);
+        assertThat(actual.getPremium()).isFalse();
+        assertThat(actual.getSummit()).isFalse();
         assertThat(actual.getCreatedAt()).isEqualTo(ZonedDateTime.parse("2011-10-15T12:37:24Z").toOffsetDateTime());
         assertThat(actual.getUpdatedAt()).isEqualTo(ZonedDateTime.parse("2021-05-10T07:34:14Z").toOffsetDateTime());
         assertThat(actual.getFollowerCount()).isNull();
@@ -132,4 +127,73 @@ class StravaClientWiremockTest {
         assertThat(actual.getLastname()).isNull();
     }
 
+    @Test
+    void getDetail() throws IOException {
+        String athleteSampleResponse = activitiesResponsFile.getContentAsString(StandardCharsets.UTF_8);
+        WireMock.stubFor(get("/athlete/activities?after=1747476183&before=1747476303&per_page=10").willReturn(
+                aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withStatus(200)
+                        .withBody(athleteSampleResponse)));
+
+        Flux<DetailedActivity> detailedActivities = stravaClient.getDetailedActivities(mock(OAuth2User.class), EARLIER, LATER);
+        List<DetailedActivity> actual = detailedActivities.collectList().block();
+
+        assertThatList(actual).hasSize(1);
+        DetailedActivity detailedActivity = actual.get(0);
+        assertThat(detailedActivity.getId()).isEqualTo(1155632529L);
+        assertThat(detailedActivity.getExternalId()).isEqualTo("running-20240423195101.tcx");
+        assertThat(detailedActivity.getAthlete().getId()).isEqualTo(2523456);
+        assertThat(detailedActivity.getName()).isEqualTo("Zomeravondcup");
+        assertThat(detailedActivity.getDistance()).isEqualTo(10028.8f);
+        assertThat(detailedActivity.getMovingTime()).isEqualTo(2768);
+        assertThat(detailedActivity.getElapsedTime()).isEqualTo(2768);
+        assertThat(detailedActivity.getTotalElevationGain()).isEqualTo(2.4f);
+        assertThat(detailedActivity.getElevHigh()).isEqualTo(4.7f);
+        assertThat(detailedActivity.getElevLow()).isEqualTo(2.2f);
+        assertThat(detailedActivity.getType()).isEqualTo(ActivityType.RUN);
+        assertThat(detailedActivity.getSportType()).isEqualTo(SportType.RUN);
+        assertThat(detailedActivity.getStartDate()).isEqualTo("2024-04-23T17:51:02Z");
+        assertThat(detailedActivity.getStartDateLocal()).isEqualTo("2024-04-23T19:51:02Z");
+        assertThat(detailedActivity.getTimezone()).isEqualTo("(GMT+01:00) Europe/Amsterdam");
+        assertThat(detailedActivity.getStartLatlng()).isEqualTo(List.of(52.07869f, 5.1566014f));
+        assertThat(detailedActivity.getEndLatlng()).isEqualTo(List.of(52.07906f, 5.1565537f));
+        assertThat(detailedActivity.getAchievementCount()).isEqualTo(16);
+        assertThat(detailedActivity.getKudosCount()).isEqualTo(6);
+        assertThat(detailedActivity.getCommentCount()).isEqualTo(0);
+        assertThat(detailedActivity.getAthleteCount()).isEqualTo(25);
+        assertThat(detailedActivity.getPhotoCount()).isEqualTo(0);
+        assertThat(detailedActivity.getTotalPhotoCount()).isEqualTo(0);
+        assertThat(detailedActivity.getMap().getId()).isEqualTo("a1155632529");
+        assertThat(detailedActivity.getMap().getPolyline()).isNull();
+        assertThat(detailedActivity.getMap().getSummaryPolyline()).startsWith("wrz|Hwcn^MNUJ]?qB_A_@UWWS_@G]E_@Dk@^w@NIRERBlCdAf@d@JZJn@Az@CHSj@SLUH[AaB}@i@UWOQSISE");
+        assertThat(detailedActivity.getTrainer()).isFalse();
+        assertThat(detailedActivity.getCommute()).isFalse();
+        assertThat(detailedActivity.getManual()).isFalse();
+        assertThat(detailedActivity.getFlagged()).isFalse();
+        assertThat(detailedActivity.getWorkoutType()).isEqualTo(1);
+        assertThat(detailedActivity.getUploadIdStr()).isEqualTo("12018543448");
+        assertThat(detailedActivity.getAverageSpeed()).isEqualTo(3.623f);
+        assertThat(detailedActivity.getMaxSpeed()).isEqualTo(7.128f);
+        assertThat(detailedActivity.getHasKudoed()).isFalse();
+        assertThat(detailedActivity.getHideFromHome()).isNull();
+        assertThat(detailedActivity.getGearId()).isNull();
+        assertThat(detailedActivity.getKilojoules()).isNull();
+        assertThat(detailedActivity.getAverageWatts()).isNull();
+        assertThat(detailedActivity.getDeviceWatts()).isNull();
+        assertThat(detailedActivity.getMaxWatts()).isNull();
+        assertThat(detailedActivity.getWeightedAverageWatts()).isNull();
+        assertThat(detailedActivity.getDescription()).isNull();
+        assertThat(detailedActivity.getPhotos()).isNull();
+        assertThat(detailedActivity.getGear()).isNull();
+        assertThat(detailedActivity.getCalories()).isNull();
+        assertThat(detailedActivity.getSegmentEfforts()).isNull();
+        assertThat(detailedActivity.getDeviceName()).isNull();
+        assertThat(detailedActivity.getEmbedToken()).isNull();
+        assertThat(detailedActivity.getSplitsMetric()).isNull();
+        assertThat(detailedActivity.getSplitsStandard()).isNull();
+        assertThat(detailedActivity.getLaps()).isNull();
+        assertThat(detailedActivity.getBestEfforts()).isNull();
+        assertThat(detailedActivity.getPrivate()).isFalse();
+    }
 }

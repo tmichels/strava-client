@@ -10,7 +10,7 @@ spring:
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             client-authentication-method: client_secret_post
             scope:
-              - read
+              - read,activity:read_all
         provider:
           strava:
             authorization-uri: https://www.strava.com/oauth/authorize
