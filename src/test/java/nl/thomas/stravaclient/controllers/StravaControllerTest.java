@@ -9,6 +9,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,9 +23,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest
 @ExtendWith(OutputCaptureExtension.class)
@@ -74,5 +79,54 @@ class StravaControllerTest {
                 .andExpect(content().string("Foutje"))
                 .andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
         assertThat(output).contains("IllegalArgumentException with message \"Foutje\". Returned BAD_REQUEST.");
+    }
+
+    @Test
+    void loggedIn_nameChangeRequest_clientCalled(CapturedOutput output) throws Exception {
+        String newName = "This Is The New Name";
+        mockMvc.perform(put("/activity/name")
+                        .with(csrf())
+                        .with(oidcLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activityId\": 1155632529, \"newName\": \"This Is The New Name\"}"))
+                .andExpect(status().is2xxSuccessful());
+        assertThat(output).contains("PUT request from user at /activity/name to replace name for activity 1155632529 with \"This Is The New Name\"");
+        verify(stravaClient).replaceNameForActivity(any(OAuth2User.class), eq(1155632529L), eq(newName));
+    }
+
+    @Test
+    void loggedIn_activityIdNotLong_exception(CapturedOutput output) throws Exception {
+        mockMvc.perform(put("/activity/name")
+                        .with(csrf())
+                        .with(oidcLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activityId\": \"1f155632529\", \"newName\": \"This Is The New Name\"}"))
+                .andExpect(status().is(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(content().string("ActivityId must be a number"));
+        assertThat(output).contains("IllegalArgumentException with message \"ActivityId must be a number\". Returned BAD_REQUEST.");
+    }
+
+    @Test
+    void loggedIn_activityIdMissing_exception(CapturedOutput output) throws Exception {
+        mockMvc.perform(put("/activity/name")
+                        .with(csrf())
+                        .with(oidcLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newName\": \"This Is The New Name\"}"))
+                .andExpect(status().is(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(content().string("ActivityId must be a number"));
+        assertThat(output).contains("IllegalArgumentException with message \"ActivityId must be a number\". Returned BAD_REQUEST.");
+    }
+
+    @Test
+    void loggedIn_newNameMissing_exception(CapturedOutput output) throws Exception {
+        mockMvc.perform(put("/activity/name")
+                        .with(csrf())
+                        .with(oidcLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activityId\": \"1155632529\"}"))
+                .andExpect(status().is(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(content().string("New name cannot be null"));
+        assertThat(output).contains("IllegalArgumentException with message \"New name cannot be null\". Returned BAD_REQUEST.");
     }
 }

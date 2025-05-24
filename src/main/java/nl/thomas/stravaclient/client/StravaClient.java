@@ -4,6 +4,8 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import nl.thomas.strava.model.DetailedActivity;
 import nl.thomas.strava.model.DetailedAthlete;
+import nl.thomas.strava.model.UpdatableActivity;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -62,8 +64,37 @@ public class StravaClient {
         }
     }
 
-    public String logout(@NonNull OAuth2User oAuth2User) {
-        return tokenService.logout(oAuth2User);
+    public Mono<DetailedActivity> replaceNameForActivity(
+            @NonNull OAuth2User oAuth2User,
+            @NonNull Long activityId,
+            @NonNull String newName) {
+        String token = tokenService.getToken(oAuth2User);
+        UpdatableActivity updatableActivity = createUpdatableActivity(activityId, newName, token);
+        return webClient.put()
+                .uri("activities/{id}", activityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updatableActivity)
+                .headers(httpHeaders -> httpHeaders.setBearerAuth(token))
+                .retrieve()
+                .bodyToMono(DetailedActivity.class);
     }
 
+    private UpdatableActivity createUpdatableActivity(Long activityId, String newName, String token) {
+        DetailedActivity activity = webClient.get()
+                .uri("/activities/{activityId}", activityId)
+                .headers(httpHeaders -> httpHeaders.setBearerAuth(token))
+                .retrieve()
+                .bodyToMono(DetailedActivity.class)
+                .block();
+        log.info("Replacing name \"{}\" with \"{}\" for activity {}", activity.getName(), newName, activity.getId());
+        return new UpdatableActivity()
+                .name(newName)
+                .commute(activity.getCommute())
+                .description(activity.getDescription())
+                .type(activity.getType())
+                .gearId(activity.getGearId())
+                .hideFromHome(activity.getHideFromHome())
+                .trainer(activity.getTrainer())
+                .sportType(activity.getSportType());
+    }
 }

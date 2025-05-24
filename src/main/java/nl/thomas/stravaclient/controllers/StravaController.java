@@ -11,12 +11,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @Slf4j
@@ -48,17 +50,50 @@ public class StravaController {
                 oAuth2User.getName(),
                 zonedAfter,
                 zonedBefore);
-            return stravaClient.getDetailedActivities(oAuth2User, zonedAfter, zonedBefore);
+        return stravaClient.getDetailedActivities(oAuth2User, zonedAfter, zonedBefore);
     }
 
-    @GetMapping
-    public String logout(@AuthenticationPrincipal @NonNull OAuth2User oAuth2User) {
-        return stravaClient.logout(oAuth2User);
+    @PutMapping("/activity/name")
+    public Mono<DetailedActivity> updateActivity(
+            @AuthenticationPrincipal @NonNull OAuth2User oAuth2User,
+            @RequestBody Map<String, String> body) {
+        Long activityId = getActivityId(body);
+        String newName = getNewName(body);
+        log.info("PUT request from {} at /activity/name to replace name for activity {} with \"{}\"",
+                oAuth2User.getName(),
+                activityId,
+                newName);
+        return stravaClient.replaceNameForActivity(oAuth2User, activityId, newName);
+    }
+
+    private Long getActivityId(Map<String, String> body) {
+        try {
+            return Long.parseLong(body.get("activityId"));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("ActivityId must be a number");
+        }
+    }
+
+    private String getNewName(Map<String, String> body) {
+        String newName = body.get("newName");
+        if (newName == null) {
+            throw new IllegalArgumentException("New name cannot be null");
+        }
+        return newName;
     }
 
     @ExceptionHandler
-    public ResponseEntity<String> handleException(IllegalArgumentException e) {
-        log.warn( "{} with message \"{}\". Returned {}.",
+    public ResponseEntity<String> handleWebclientException(WebClientResponseException e) {
+        log.warn("{} with message \"{}\". Returned {}.",
+                e.getClass().getSimpleName(),
+                e.getMessage(),
+                e.getStatusCode());
+        return ResponseEntity.status(e.getStatusCode()).body(e.getMessage());
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<String> handleException(Exception e) {
+        log.warn("{} with message \"{}\". Returned {}.",
                 e.getClass().getSimpleName(),
                 e.getMessage(),
                 HttpStatus.BAD_REQUEST.name());

@@ -17,8 +17,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.wiremock.spring.EnableWireMock;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -28,12 +28,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static nl.thomas.stravaclient.client.StravaClientTest.EARLIER;
 import static nl.thomas.stravaclient.client.StravaClientTest.LATER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatList;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
 @EnableWireMock
@@ -51,6 +49,8 @@ class StravaClientWiremockTest {
     Resource athleteResponsFile;
     @Value("classpath:activities-sample.json")
     Resource activitiesResponsFile;
+    @Value("classpath:activity-sample.json")
+    Resource activityResponsFile;
 
     @Test
     void validResponse_correctlyMapped() throws IOException {
@@ -71,7 +71,7 @@ class StravaClientWiremockTest {
         assertThat(actual.getProfileMedium()).isEqualTo("https://medium.jpg");
         assertThat(actual.getProfile()).isEqualTo("https://large.jpg");
         assertThat(actual.getCity()).isEqualTo("Utrecht");
-        assertThat(actual.getState()).isEqualTo("");
+        assertThat(actual.getState()).isEmpty();
         assertThat(actual.getCountry()).isEqualTo("The Netherlands");
         assertThat(actual.getSex()).isEqualTo(DetailedAthlete.SexEnum.F);
         assertThat(actual.getPremium()).isFalse();
@@ -133,12 +133,12 @@ class StravaClientWiremockTest {
 
     @Test
     void getActivities(CapturedOutput output) throws IOException {
-        String athleteSampleResponse = activitiesResponsFile.getContentAsString(StandardCharsets.UTF_8);
+        String activitiesSampleResponse = activitiesResponsFile.getContentAsString(StandardCharsets.UTF_8);
         WireMock.stubFor(get("/athlete/activities?after=1747476183&before=1747476303&per_page=10").willReturn(
                 aResponse()
                         .withHeader("Content-Type", "application/json")
                         .withStatus(200)
-                        .withBody(athleteSampleResponse)));
+                        .withBody(activitiesSampleResponse)));
 
         Mono<List<DetailedActivity>> detailedActivities = stravaClient.getDetailedActivities(mock(OAuth2User.class), EARLIER, LATER);
         List<DetailedActivity> actual = detailedActivities.block();
@@ -165,10 +165,10 @@ class StravaClientWiremockTest {
         assertThat(detailedActivity.getEndLatlng()).isEqualTo(List.of(52.07906f, 5.1565537f));
         assertThat(detailedActivity.getAchievementCount()).isEqualTo(16);
         assertThat(detailedActivity.getKudosCount()).isEqualTo(6);
-        assertThat(detailedActivity.getCommentCount()).isEqualTo(0);
+        assertThat(detailedActivity.getCommentCount()).isZero();
         assertThat(detailedActivity.getAthleteCount()).isEqualTo(25);
-        assertThat(detailedActivity.getPhotoCount()).isEqualTo(0);
-        assertThat(detailedActivity.getTotalPhotoCount()).isEqualTo(0);
+        assertThat(detailedActivity.getPhotoCount()).isZero();
+        assertThat(detailedActivity.getTotalPhotoCount()).isZero();
         assertThat(detailedActivity.getMap().getId()).isEqualTo("a1155632529");
         assertThat(detailedActivity.getMap().getPolyline()).isNull();
         assertThat(detailedActivity.getMap().getSummaryPolyline()).startsWith("wrz|Hwcn^MNUJ]?qB_A_@UWWS_@G]E_@Dk@^w@NIRERBlCdAf@d@JZJn@Az@CHSj@SLUH[AaB}@i@UWOQSISE");
@@ -200,5 +200,37 @@ class StravaClientWiremockTest {
         assertThat(detailedActivity.getLaps()).isNull();
         assertThat(detailedActivity.getBestEfforts()).isNull();
         assertThat(detailedActivity.getPrivate()).isFalse();
+    }
+
+    @Test
+    void validNameChangeRequest_nameChanged(CapturedOutput output) throws IOException {
+        String activitySampleResponse = activityResponsFile.getContentAsString(StandardCharsets.UTF_8);
+        WireMock.stubFor(get("/activities/123132").willReturn(
+                aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withStatus(200)
+                        .withBody(activitySampleResponse)));
+        WireMock.stubFor(put("/activities/123132").willReturn(
+                aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withStatus(200)
+                        .withBody(activitySampleResponse)));
+
+        stravaClient.replaceNameForActivity(mock(OAuth2User.class), 123132L, "new");
+
+        assertThat(output).contains("Replacing name \"Zomeravondcup\" with \"new\" for activity 1155632529");
+    }
+
+    @Test
+    void nonExistingActivityId_notFound(CapturedOutput output) {
+        WireMock.stubFor(get("/activities/123132").willReturn(
+                aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withStatus(404)));
+        assertThatThrownBy(() -> stravaClient.replaceNameForActivity(mock(OAuth2User.class), 123132L, "new"))
+                .isInstanceOf(WebClientResponseException.NotFound.class)
+                .hasMessageMatching("404 Not Found from GET http://localhost:[0-9]+/activities/123132");
+
+        assertThat(output).containsPattern("404 NOT_FOUND response from Strava to GET request http://localhost:[0-9]+/activities/123132");
     }
 }
