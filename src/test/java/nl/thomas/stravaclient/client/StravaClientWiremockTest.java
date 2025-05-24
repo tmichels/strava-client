@@ -140,8 +140,8 @@ class StravaClientWiremockTest {
                         .withStatus(200)
                         .withBody(athleteSampleResponse)));
 
-        Flux<DetailedActivity> detailedActivities = stravaClient.getDetailedActivities(mock(OAuth2User.class), EARLIER, LATER);
-        List<DetailedActivity> actual = detailedActivities.collectList().block();
+        Mono<List<DetailedActivity>> detailedActivities = stravaClient.getDetailedActivities(mock(OAuth2User.class), EARLIER, LATER);
+        List<DetailedActivity> actual = detailedActivities.block();
 
         assertThat(output).containsPattern("200 OK response from Strava to GET request http://localhost:[0-9]+/athlete/activities\\?after=1747476183&before=1747476303&per_page=10");
         assertThatList(actual).hasSize(1);

@@ -7,10 +7,10 @@ import nl.thomas.strava.model.DetailedAthlete;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 @Component
 @Slf4j
@@ -33,13 +33,13 @@ public class StravaClient {
                 .bodyToMono(DetailedAthlete.class);
     }
 
-    public Flux<DetailedActivity> getDetailedActivities(
+    public Mono<List<DetailedActivity>> getDetailedActivities(
             @NonNull OAuth2User oAuth2User,
             @NonNull ZonedDateTime after,
             @NonNull ZonedDateTime before) {
         throwIfInvalidParameters(after, before);
         String token = tokenService.getToken(oAuth2User);
-        return webClient.get()
+        Mono<List<DetailedActivity>> mono = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("athlete/activities")
                         .queryParam("after", after.toEpochSecond())
@@ -48,7 +48,12 @@ public class StravaClient {
                         .build())
                 .headers(httpHeaders -> httpHeaders.setBearerAuth(token))
                 .retrieve()
-                .bodyToFlux(DetailedActivity.class);
+                .bodyToFlux(DetailedActivity.class)
+                .collectList();
+        mono.subscribe(detailedActivities -> log.info(
+                "The following activities were received from Strava: {}",
+                detailedActivities.stream().map(DetailedActivity::getId).toList()));
+        return mono;
     }
 
     private void throwIfInvalidParameters(ZonedDateTime after, ZonedDateTime before) {

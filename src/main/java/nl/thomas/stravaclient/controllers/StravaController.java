@@ -11,12 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -29,13 +29,13 @@ public class StravaController {
     }
 
     @GetMapping("/athlete")
-    public Mono<DetailedAthlete> getCurrentAthlete(@AuthenticationPrincipal @NonNull OAuth2User oAuth2User, @CookieValue("JSESSIONID") String jsessionId ) {
+    public Mono<DetailedAthlete> getCurrentAthlete(@AuthenticationPrincipal @NonNull OAuth2User oAuth2User, @CookieValue("JSESSIONID") String jsessionId) {
         log.info("GET request received at /athlete for user {} with cookie JSESSIONID value {}", oAuth2User.getName(), jsessionId);
         return stravaClient.getDetailedAthlete(oAuth2User);
     }
 
     @GetMapping("/athlete/activities")
-    public Flux<DetailedActivity> getDetailedActivities(
+    public Mono<List<DetailedActivity>> getDetailedActivities(
             @AuthenticationPrincipal @NonNull OAuth2User oAuth2User,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime before,
